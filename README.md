@@ -1,49 +1,49 @@
-# Distributed Job Executor 
+# Distributed Job Executor
 
-A lightweight distributed job orchestration system built with Bash and SQLite.  
-Designed to simulate core concepts of real-world schedulers like Kubernetes and Nomad using minimal tooling.
+A lightweight, robust distributed task orchestration system built with Bash and SQLite. This project simulates core concepts of production-grade schedulers like Kubernetes or Nomad using minimal system tools.
 
----
+##  Key Features
 
-##  Features
+- **SQLite Persistence** Centralized job queue, state tracking, and execution history.
 
-- **SQLite Backend**  
-  Centralized job queue, status tracking, and execution results.
+- **Robust Command Encoding** Uses **Base64 encoding** to safely transmit commands containing special characters (`&&`, `|`, quotes) over SSH.
 
-- **Distributed Execution over SSH**  
-  Jobs are dispatched to remote nodes via SSH.
+- **Event-Driven State Machine** Jobs transition through: `QUEUED → RUNNING → SUCCESS / FAIL`.
 
-- **Load Balancing**  
-  Automatically selects the least loaded node using `/proc/loadavg`.
+- **Automatic Retry Mechanism** Failed jobs are re-queued until a configurable retry limit is reached.
 
-- **Retry Mechanism**  
-  Failed jobs are automatically retried with a configurable limit.
+- **Safe Output Handling** Escapes special characters (SQL escaping) before storing command output in SQLite.
 
-- **Real-time Monitoring**  
-  Live terminal dashboard and metrics reporting.
+- **Observability** Live terminal dashboard and metrics reporting for real-time system visibility.
 
-- **Event-driven Execution Model**  
-  Jobs transition through states: `QUEUED → RUNNING → SUCCESS/FAIL`.
+##  How It Works (Workflow)
 
----
+The system follows a structured execution pipeline to ensure reliability and traceability:
 
-## 🛠 Tech Stack
+1. **Ingestion:** Jobs are inserted into SQLite with `QUEUED` state via `submit.sh`.
+2. **Selection:** The `runner.sh` (orchestrator) selects jobs using FIFO scheduling.
+3. **Encapsulation:** Commands are Base64-encoded to prevent shell parsing issues during transmission.
+4. **Dispatch:** Encoded payload is sent to a worker node over SSH.
+5. **Execution:** The `worker.sh` decodes and executes the command, capturing output.
+6. **Finalization:** Execution results and duration are stored in the database.
 
-- **Language:** Bash  
-- **Database:** SQLite3  
-- **Transport:** SSH  
-- **Platform:** Linux (Arch / CachyOS optimized)
+##  Technical Stack
 
----
+- **Language:** Bash (Shell Scripting)
+- **Database:** SQLite3
+- **Transport:** SSH (Key-based authentication)
+- **Environment:** Linux (Arch / CachyOS optimized)
 
 ##  Project Structure
 
-- `init_db.sh`: Initializes the SQLite database and directory structure.
-- `submit.sh`: Client tool to submit new jobs to the queue.
-- `runner.sh`: The core orchestrator that dispatches jobs to nodes.
-- `worker.sh`: Remote execution engine (payload).
-- `metrics.sh`: Generates success/fail statistics.
-- `dashboard_live.sh`: A live, auto-refreshing terminal dashboard.
+| File | Role | Description |
+| :--- | :--- | :--- |
+| `init_db.sh` | **Setup** | Bootstraps the SQLite database and folder structure. |
+| `submit.sh` | **Producer** | Adds new tasks to the queue. |
+| `runner.sh` | **Orchestrator**| The main engine: handles encoding, dispatching, and retries. |
+| `worker.sh` | **Consumer** | Executes the decoded payload on the remote node. |
+| `metrics.sh` | **Analytics** | Calculates system performance statistics. |
+| `dashboard_live.sh` | **UI** | Live monitoring dashboard. |
 
 ##  Quick Start
 
@@ -55,11 +55,33 @@ Designed to simulate core concepts of real-world schedulers like Kubernetes and 
     ```bash
    ./submit.sh "uptime && df -h"
     
-3. **Start the orchestrator::**
+3. **Start the orchestrator:**
     ```bash
     ./runner.sh
-    
-5. **Monitor progress::**
+
+4. **Monitor progress::**
     ```bash
-    ./dashboard_live.sh
-   
+    ./dashboard_live.sh 
+
+---
+
+##  Concepts Demonstrated
+
+- **Distributed Scheduling** Coordinating task execution across multiple compute nodes to balance workload.
+
+- **Remote Command Execution (RCE)** Safely executing commands on remote systems using secure SSH tunnels.
+
+- **Fault Tolerance** Built-in retry mechanism to handle transient network issues or execution failures.
+
+- **Observability** Integrated CLI-based dashboard for real-time system health and task monitoring.
+
+---
+
+##  Important Notes
+
+- **SSH Setup Required** Passwordless SSH (SSH keys) must be configured between the orchestrator and worker nodes for seamless execution.
+
+- **Educational Purpose** This project is specifically designed for learning distributed systems architecture and DevOps fundamentals.
+
+- **Not Production Ready** Lacks advanced sandboxing, containerization (Docker), and isolation required for secure multi-tenant execution.
+- 
