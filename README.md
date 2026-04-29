@@ -1,11 +1,11 @@
-# Distributed Job Executor (V2)
+# Distributed Job Executor 
 
 A lightweight distributed job orchestration system built with Bash and SQLite.  
 Designed to simulate core concepts of real-world schedulers like Kubernetes and Nomad using minimal tooling.
 
 ---
 
-## 🚀 Features
+##  Features
 
 - **SQLite Backend**  
   Centralized job queue, status tracking, and execution results.
