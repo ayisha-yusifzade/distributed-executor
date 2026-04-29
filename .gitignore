@@ -1,0 +1,19 @@
+# Database
+jobs.db
+*.sqlite
+*.db
+
+# Logs
+logs/
+*.log
+
+# System files
+.DS_Store
+
+# Temporary files
+tmp/
+temp/
+
+# SSH / sensitive stuff (əgər varsa)
+*.pem
+*.key

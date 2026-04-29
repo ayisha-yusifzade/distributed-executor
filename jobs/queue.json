@@ -1,0 +1,17 @@
+[
+  {
+    "id": 1,
+    "cmd": "whoami",
+    "status": "SUCCESS"
+  },
+  {
+    "id": 2,
+    "cmd": "uptime",
+    "status": "SUCCESS"
+  },
+  {
+    "id": 3,
+    "cmd": "ls",
+    "status": "SUCCESS"
+  }
+]

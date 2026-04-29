@@ -1,0 +1,6 @@
+{
+  "hosts": [
+    "localhost"
+  ],
+  "timeout": 5
+}
