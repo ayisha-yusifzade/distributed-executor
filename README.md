@@ -1,21 +1,40 @@
 # Distributed Job Executor (V2)
 
-A lightweight, robust, and secure distributed task orchestration system built with Bash and SQLite. This tool allows for remote command execution over SSH with built-in retry logic and real-time monitoring.
+A lightweight distributed job orchestration system built with Bash and SQLite.  
+Designed to simulate core concepts of real-world schedulers like Kubernetes and Nomad using minimal tooling.
 
-##  Features
+---
 
-- **SQLite Backend:** Centralized job tracking, status management, and output logging.
-- **Base64 Encoding:** Commands are encoded to ensure safe transmission of special characters (`&&`, `|`, quotes) over SSH.
-- **Robust Retry Logic:** Automatic re-queueing of failed tasks with configurable maximum retry limits.
-- **Real-time Monitoring:** Live dashboard and metrics reporting for system health and job success rates.
-- **Security-First:** Minimal footprint, utilizing standard SSH protocols and secure data handling.
+## 🚀 Features
 
-##  Technical Stack
+- **SQLite Backend**  
+  Centralized job queue, status tracking, and execution results.
 
-- **Language:** Bash (Shell Scripting)
-- **Database:** SQLite3
-- **OS Support:** Linux (Optimized for Arch/CachyOS)
-- **Transport:** SSH
+- **Distributed Execution over SSH**  
+  Jobs are dispatched to remote nodes via SSH.
+
+- **Load Balancing**  
+  Automatically selects the least loaded node using `/proc/loadavg`.
+
+- **Retry Mechanism**  
+  Failed jobs are automatically retried with a configurable limit.
+
+- **Real-time Monitoring**  
+  Live terminal dashboard and metrics reporting.
+
+- **Event-driven Execution Model**  
+  Jobs transition through states: `QUEUED → RUNNING → SUCCESS/FAIL`.
+
+---
+
+## 🛠 Tech Stack
+
+- **Language:** Bash  
+- **Database:** SQLite3  
+- **Transport:** SSH  
+- **Platform:** Linux (Arch / CachyOS optimized)
+
+---
 
 ##  Project Structure
 
