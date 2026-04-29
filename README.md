@@ -59,7 +59,7 @@ The system follows a structured execution pipeline to ensure reliability and tra
     ```bash
     ./runner.sh
 
-4. **Monitor progress::**
+4. **Monitor progress:**
     ```bash
     ./dashboard_live.sh 
 
@@ -84,4 +84,3 @@ The system follows a structured execution pipeline to ensure reliability and tra
 - **Educational Purpose** This project is specifically designed for learning distributed systems architecture and DevOps fundamentals.
 
 - **Not Production Ready** Lacks advanced sandboxing, containerization (Docker), and isolation required for secure multi-tenant execution.
-- 
