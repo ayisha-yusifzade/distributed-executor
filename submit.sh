@@ -1,7 +1,6 @@
 #!/bin/bash
-
 DB="jobs.db"
-cmd="$1"
+cmd=$(echo "$1" | sed "s/'/''/g")
 
 if [ -z "$cmd" ]; then
   echo "Usage: ./submit.sh \"command\""
@@ -9,5 +8,4 @@ if [ -z "$cmd" ]; then
 fi
 
 sqlite3 "$DB" "INSERT INTO jobs(cmd,status,retry,created_at) VALUES('$cmd','QUEUED',0,datetime('now'));"
-
-echo "[SUBMITTED] $cmd"
+echo "[SUBMITTED] $1"

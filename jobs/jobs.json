@@ -1,7 +1,0 @@
-{
-  "jobs": [
-    { "id": 1, "cmd": "whoami" },
-    { "id": 2, "cmd": "uptime" },
-    { "id": 3, "cmd": "ls" }
-  ]
-}

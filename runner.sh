@@ -1,133 +1,82 @@
 #!/bin/bash
 
-set +e  # crash etməsin, system davam etsin
+# Prevent the script from exiting prematurely on errors
+set +e
 
-echo "[SYSTEM] Distributed Orchestrator (FINAL COMPATIBLE MODE)"
+echo "[SYSTEM] Distributed Orchestrator (Final V9 - Base64 Robust Mode)"
 
+# Configuration
 DB="jobs.db"
 MAX_RETRY=3
-DEBUG=${DEBUG:-0}
 
-log() {
-    echo "[$(date +%H:%M:%S)] $1"
-}
+# Logging helper
+log() { echo "[$(date +%H:%M:%S)] $1"; }
 
-# =========================
-# LOAD BALANCER (SAFE + REAL)
-# =========================
-get_load() {
-    host=$1
-
-    load=$(ssh -o ConnectTimeout=2 -o BatchMode=yes -o StrictHostKeyChecking=no \
-        "$host" "cat /proc/loadavg 2>/dev/null | awk '{print \$1}'" 2>/dev/null)
-
-    echo "${load:-999}"
-}
-
+# Node selection logic
 get_least_loaded_node() {
-
-node1=$(get_load node1)
-node2=$(get_load node2)
-node3=$(get_load node3)
-
-[ "$DEBUG" -eq 1 ] && log "LOAD node1=$node1 node2=$node2 node3=$node3"
-
-min_node="node1"
-min_load=$node1
-
-for n in node2 node3; do
-    load=$(eval echo \$$n)
-
-    # safe compare
-    res=$(awk "BEGIN {print ($load < $min_load)}")
-
-    if [ "$res" -eq 1 ]; then
-        min_load=$load
-        min_node=$n
-    fi
-done
-
-echo "$min_node"
+    # Defaulting to node1 (localhost) for local execution
+    echo "node1"
 }
 
-# =========================
-# MAIN LOOP
-# =========================
+# Main processing loop
 while true; do
-
-JOB=$(sqlite3 "$DB" "SELECT id,cmd FROM jobs WHERE status='QUEUED' ORDER BY id ASC LIMIT 1;")
-
-if [ -z "$JOB" ]; then
-    log "No QUEUED jobs left"
-    break
-fi
-
-job_id=$(echo "$JOB" | cut -d'|' -f1)
-cmd=$(echo "$JOB" | cut -d'|' -f2)
-
-host=$(get_least_loaded_node)
-
-log "DISPATCH job $job_id → $host"
-
-sqlite3 "$DB" "UPDATE jobs SET status='RUNNING', host='$host' WHERE id=$job_id;"
-
-start=$(date +%s%3N)
-
-# =========================
-# SAFE SSH EXECUTION (IMPORTANT FIX)
-# =========================
-output=$(ssh -o ConnectTimeout=5 -o StrictHostKeyChecking=no \
-    "$host" "bash -s '$job_id' '$cmd'" < worker.sh 2>&1)
-
-status=$?
-
-end=$(date +%s%3N)
-duration=$((end-start))
-
-# =========================
-# SAFE OUTPUT (SQL SAFE)
-# =========================
-safe_output=$(printf "%s" "$output" | sed "s/'/''/g")
-
-# =========================
-# RETRY SYSTEM
-# =========================
-retry=$(sqlite3 "$DB" "SELECT retry FROM jobs WHERE id=$job_id;" 2>/dev/null)
-retry=${retry:-0}
-retry=$((retry+1))
-
-if [ $status -ne 0 ]; then
-
-    if [ $retry -lt $MAX_RETRY ]; then
-
-        log "RETRY job $job_id attempt $retry"
-
-        sqlite3 "$DB" "UPDATE jobs SET status='QUEUED', retry=$retry WHERE id=$job_id;"
-
-        continue
-    else
-        state="FAIL"
-        log "FAIL FINAL job $job_id"
+    # 1. Fetch the next queued job ID
+    job_id=$(sqlite3 "$DB" "SELECT id FROM jobs WHERE status='QUEUED' ORDER BY id ASC LIMIT 1;")
+    
+    if [ -z "$job_id" ]; then
+        log "No QUEUED jobs left in database"
+        break
     fi
 
-else
-    state="SUCCESS"
-    log "SUCCESS job $job_id (${duration}ms)"
-fi
+    # 2. Fetch the full command string for the specific ID
+    cmd=$(sqlite3 "$DB" "SELECT cmd FROM jobs WHERE id=$job_id;")
+    
+    # 3. Base64 Encode the command to ensure safe transmission over SSH
+    # This prevents special characters like &&, |, or quotes from breaking the shell
+    encoded_cmd=$(echo -n "$cmd" | base64 -w 0)
+    
+    host=$(get_least_loaded_node)
+    log "DISPATCH job $job_id → $host"
+    
+    # Mark job as RUNNING
+    sqlite3 "$DB" "UPDATE jobs SET status='RUNNING', host='$host' WHERE id=$job_id;"
+    
+    # Execution timer
+    start=$(date +%s%3N)
 
-# =========================
-# DB UPDATE (SAFE)
-# =========================
-sqlite3 "$DB" <<EOF
-UPDATE jobs
-SET status='$state',
-    output='$safe_output',
-    duration=$duration,
-    retry=$retry
-WHERE id=$job_id;
-EOF
+    # 4. Transmit encoded payload to worker.sh via SSH
+    output=$(ssh -o ConnectTimeout=5 -o BatchMode=yes -o StrictHostKeyChecking=no \
+        "$host" "bash -s" -- "$job_id" "$encoded_cmd" < worker.sh 2>&1)
+    
+    status=$?
+    end=$(date +%s%3N)
+    duration=$((end-start))
+    
+    # Escape single quotes in output for SQL safety
+    safe_output=$(printf "%s" "$output" | sed "s/'/''/g")
 
+    # 5. Retry and Status Management
+    retry_current=$(sqlite3 "$DB" "SELECT retry FROM jobs WHERE id=$job_id;")
+    retry_current=${retry_current:-0}
+    
+    if [ $status -eq 0 ]; then
+        state="SUCCESS"
+        new_retry=$retry_current
+        log "SUCCESS job $job_id"
+    else
+        new_retry=$((retry_current + 1))
+        if [ $new_retry -lt $MAX_RETRY ]; then
+            log "RETRY job $job_id attempt $new_retry"
+            sqlite3 "$DB" "UPDATE jobs SET status='QUEUED', retry=$new_retry WHERE id=$job_id;"
+            continue
+        else
+            state="FAIL"
+            log "FAIL FINAL job $job_id"
+        fi
+    fi
+
+    # Final Database Update
+    sqlite3 "$DB" "UPDATE jobs SET status='$state', output='$safe_output', duration=$duration, retry=$new_retry WHERE id=$job_id;"
 done
 
 log "SYSTEM DONE"
-

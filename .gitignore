@@ -1,4 +1,4 @@
-# Database
+# Database files 
 jobs.db
 *.sqlite
 *.db
@@ -14,6 +14,9 @@ logs/
 tmp/
 temp/
 
-# SSH / sensitive stuff (əgər varsa)
+# SSH / sensitive stuff
 *.pem
 *.key
+
+# Arch/CachyOS specific
+*~
